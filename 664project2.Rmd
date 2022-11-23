@@ -1,0 +1,271 @@
+---
+title: "664project"
+author: "Peter (Tianzhu) Liu"
+date: '2022-11-17'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Read the data
+```{r}
+#data <- read.csv(file = '/Users/liutianzhu0104/Desktop/STOR-664-Group-Project-Fall-2022/Data/final_dataset.csv')
+data <- read.csv(file = 'C:/Users/tl015/iCloudDrive/Desktop/STOR-664-Group-Project-Fall-2022/Data/final_dataset.csv')
+```
+
+Data Cleaning
+```{r}
+data2 = data[,c(3,5,6,8,14,17,21,24,25,26,27,28,29)]
+data2 = na.omit(data2)
+data2$salary = log(data2$salery)
+```
+
+Randomly split the data: 80% train & 20% test
+```{r}
+set.seed(664)
+shuffle = sample.int(nrow(data2))
+data2$split = cut(shuffle, breaks = 5, labels = c("1","2","3","4","test"))
+train = subset(data2, split != "test", select = -split)
+test = subset(data2, split == "test", select = -split)
+data2 = subset(data2, select = -split)
+```
+
+Exploratory Data Analysis
+```{r}
+hist(data2$salery)
+hist(data2$salary)
+hist(sqrt(data2$salery))
+```
+
+```{r}
+plot(data2$Age,data2$salary)
+plot(data2$G,data2$salary)
+plot(data2$MP,data2$salary)
+plot(data2$X3P.,data2$salary)
+plot(data2$X2P.,data2$salary)
+plot(data2$FT.,data2$salary)
+plot(data2$TRB,data2$salary)
+plot(data2$AST,data2$salary)
+plot(data2$STL,data2$salary)
+plot(data2$BLK,data2$salary)
+plot(data2$TOV,data2$salary)
+plot(data2$PF,data2$salary)
+```
+
+```{r}
+library(corrplot)
+corrplot(cor(data2),
+         method = "circle",       
+         order = "hclust",         # Ordering method of the matrix
+         hclust.method = "ward.D", # If order = "hclust", is the cluster method to be used
+         addrect = 2,              # If order = "hclust", number of cluster rectangles
+         rect.col = 3,             # Color of the rectangles
+         rect.lwd = 3)   
+```
+
+Model Comparison
+```{r}
+rmse=function(x,y){sqrt(mean((x-y)^2))}
+lm1 = lm(salary~.-salery,train)
+summary(lm1)
+rmse(predict(lm1,test),test$salary)
+```
+
+```{r}
+step(lm1)
+lm2 = lm(salary ~ Age + G + MP + X2P. + FT. + TRB , train)
+summary(lm2)
+rmse(predict(lm2,test),test$salary)
+```
+
+```{r}
+library(leaps)
+b = regsubsets(salary~.-salery, data = train)
+rs = summary(b)
+AIC = 325*log(rs$rss/325) + 2*(2:13)
+plot(AIC ~ I(1:12),ylab = "AIC", xlab = "Number of Predictors")
+rs$which[which.min(AIC),]
+lm3 = lm(salary~Age + G + MP + X3P. + FT. + TRB + AST ,train)
+summary(lm3)
+rmse(predict(lm3,test),test$salary)
+```
+
+```{r}
+plot(2:9,rs$adjr2, ylab = "Adjusted R-square", xlab = "Number of Parameters")
+rs$which[which.max(rs$adjr2),]
+lm4 = lm(salary~Age + G + MP + X2P. + FT. + TRB + TOV ,train)
+summary(lm4)
+rmse(predict(lm4,test),test$salary)
+```
+
+```{r}
+#Mallow's Cp yields the same model as Adjusted R^2
+plot(2:9,rs$cp, ylab = "CP statistic", xlab = "Number of Parameters")
+abline(0,1)
+rs$which[which.min(rs$cp)+1,]
+```
+
+```{r}
+set.seed(664)
+library(pls)
+lm5 = pcr(salary~.-salery,data = train, scale = TRUE, validation = "CV")
+summary(lm5)
+validationplot(lm5, val.type = "MSEP")
+rmse(predict(lm5,test),test$salary)
+```
+
+```{r}
+lm6 = plsr(salary~.-salery,data = train, scale = TRUE, validation = "CV")
+summary(lm6)
+validationplot(lm6, val.type = "MSEP")
+rmse(predict(lm6,test),test$salary)
+```
+
+```{r}
+set.seed(664)
+library(glmnet)
+y <- train$salary
+x <- data.matrix(train[,-c(1,14)])
+cv_model <- cv.glmnet(x, y, alpha = 0)
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model)
+best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
+coef(best_model)
+test2 = data.matrix(test[,-c(1,14)])
+rmse(predict(best_model, s = best_lambda, newx = test2),test$salary)
+```
+
+```{r}
+set.seed(664)
+library(glmnet)
+y <- train$salary
+x <- data.matrix(train[,-c(1,14)])
+cv_model <- cv.glmnet(x, y, alpha = 1)
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model)
+best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
+coef(best_model)
+test2 = data.matrix(test[,-c(1,14)])
+rmse(predict(best_model, s = best_lambda, newx = test2),test$salary)
+```
+
+Detect Influential Observations and Outliers
+```{r}
+#observations 22, 146, 351, 376, and 395 considered influential 
+library(car)
+lm7 = lm(salery~ .-salery,data2)
+summary(lm7)
+cooksd <- cooks.distance(lm7)
+plot(lm7, which=4)
+which(dffits(lm7)>2*sqrt(14/406))
+which(abs(covratio(lm7)-1)>(3*14/406))
+which(dfbetas(lm7)>(2/sqrt(406)))
+outlierTest(lm7)
+influencePlot(lm7)
+```
+
+```{r}
+data3 = data2[-c(22,146,351,376,395),]
+```
+
+Repeat the previous steps
+```{r}
+set.seed(664)
+shuffle = sample.int(nrow(data3))
+data3$split = cut(shuffle, breaks = 5, labels = c("1","2","3","4","test"))
+train3 = subset(data3, split != "test", select = -split)
+test3 = subset(data3, split == "test", select = -split)
+data3 = subset(data3, select = -split)
+```
+
+```{r}
+lm8= lm(salary~.-salery,train3)
+summary(lm8)
+rmse(predict(lm8,test3),test3$salary)
+```
+
+```{r}
+step(lm8)
+lm9 = lm(salary ~ Age + G + MP + X2P. + FT. + TRB , train)
+summary(lm9)
+rmse(predict(lm9,test),test$salary)
+```
+
+```{r}
+library(leaps)
+b = regsubsets(salary~.-salery, data = train3)
+rs = summary(b)
+AIC = 321*log(rs$rss/321) + 2*(2:13)
+plot(AIC ~ I(1:12),ylab = "AIC", xlab = "Number of Predictors")
+rs$which[which.min(AIC),]
+lm10 = lm(salary~Age + G + MP + X3P. + FT. + PF ,train3)
+summary(lm10)
+rmse(predict(lm10,test3),test3$salary)
+```
+
+```{r}
+plot(2:9,rs$adjr2, ylab = "Adjusted R-square", xlab = "Number of Parameters")
+rs$which[which.max(rs$adjr2),]
+lm11 = lm(salary~Age + G + MP + X2P. + FT. + BLK + TOV ,train3)
+summary(lm11)
+rmse(predict(lm4,test3),test3$salary)
+```
+
+```{r}
+plot(2:9,rs$cp, ylab = "CP statistic", xlab = "Number of Parameters")
+abline(0,1)
+rs$which[which.min(rs$cp)+1,]
+lm12 = lm(salary~Age + G + MP + X2P. + FT. + TRB ,train3)
+summary(lm12)
+rmse(predict(lm12,test3),test3$salary)
+```
+
+```{r}
+set.seed(664)
+library(pls)
+lm13 = pcr(salary~.-salery,data = train3, scale = TRUE, validation = "CV")
+summary(lm13)
+validationplot(lm13, val.type = "MSEP")
+rmse(predict(lm13,test3),test3$salary)
+```
+
+```{r}
+lm14 = plsr(salary~.-salery,data = train3, scale = TRUE, validation = "CV")
+summary(lm14)
+validationplot(lm14, val.type = "MSEP")
+rmse(predict(lm14,test3),test3$salary)
+```
+
+```{r}
+set.seed(664)
+library(glmnet)
+y <- train3$salary
+x <- data.matrix(train3[,-c(1,14)])
+cv_model <- cv.glmnet(x, y, alpha = 0)
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model)
+best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
+coef(best_model)
+test4 = data.matrix(test3[,-c(1,14)])
+rmse(predict(best_model, s = best_lambda, newx = test4),test3$salary)
+```
+
+```{r}
+set.seed(664)
+library(glmnet)
+y <- train3$salary
+x <- data.matrix(train3[,-c(1,14)])
+cv_model <- cv.glmnet(x, y, alpha = 1)
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model)
+best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
+coef(best_model)
+test4 = data.matrix(test3[,-c(1,14)])
+rmse(predict(best_model, s = best_lambda, newx = test4),test3$salary)
+```
