@@ -1,0 +1,324 @@
+---
+title: "664project3"
+author: "Peter (Tianzhu) Liu"
+date: '2022-11-25'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Data Cleaning
+```{r}
+data <- read.csv(file = '/Users/liutianzhu0104/Desktop/STOR-664-Group-Project-Fall-2022/final_dataset2.csv')
+data = data[data[,"G"] >= 40,]      #screen out less statistically significant data points
+data = data[data[,"Age"] >= 24,]    #salary cap 
+data_reduced = data[,c('Player', 'Pos', 'salary','Age','FG.','FT.','MPG','PPG','APG','RPG','TOPG','BPG','SPG')]
+```
+
+Correlation 
+```{r}
+library(corrplot)
+corrplot(cor(data_reduced[,c(3:13)]),
+         method = "circle",       
+         order = "hclust",         # Ordering method of the matrix
+         hclust.method = "ward.D", # If order = "hclust", is the cluster method to be used
+         addrect = 2,              # If order = "hclust", number of cluster rectangles
+         rect.col = 3,             # Color of the rectangles
+         rect.lwd = 3)  
+```
+
+EDA
+```{r}
+par(mfrow=c(3,4))
+plot(data_reduced$salary, data_reduced$Age)
+plot(data_reduced$salary, data_reduced$FG.)
+plot(data_reduced$salary, data_reduced$FT.)
+plot(data_reduced$salary, data_reduced$MPG)
+plot(data_reduced$salary, data_reduced$PPG)
+plot(data_reduced$salary, data_reduced$APG)
+plot(data_reduced$salary, data_reduced$RPG)
+plot(data_reduced$salary, data_reduced$TOPG)
+plot(data_reduced$salary, data_reduced$BPG)
+plot(data_reduced$salary, data_reduced$SPG)
+```
+
+```{r}
+par(mfrow=c(3,4))
+hist(data_reduced$Age,freq = F)
+hist(data_reduced$FG.,freq = F)
+hist(data_reduced$FT.,freq = F)
+hist(data_reduced$MPG,freq = F)
+hist(data_reduced$PPG,freq = F)
+hist(data_reduced$APG,freq = F)
+hist(data_reduced$RPG,freq = F)
+hist(data_reduced$TOPG,freq = F)
+hist(data_reduced$BPG,freq = F)
+hist(data_reduced$SPG,freq = F)
+```
+
+```{r}
+par(mfrow=c(1,3))
+hist(data_reduced$salary,freq = F)
+hist(log(data_reduced$salary),freq = F)
+hist(sqrt(data_reduced$salary),freq = F)
+```
+
+```{r}
+model1 = lm(salary~Age+FG.+FT.+MPG+PPG+APG+RPG+TOPG+BPG+SPG, data = data_reduced)
+summary(model1)
+plot(model1)
+```
+
+```{r}
+model2 = lm(log(salary)~ Age+FG.+FT.+MPG+PPG+APG+RPG+TOPG+BPG+SPG, data = data_reduced)
+summary(model2)
+plot(model2)
+```
+
+```{r}
+model3 = lm(sqrt(salary)~Age+FG.+FT.+MPG+PPG+APG+RPG+TOPG+BPG+SPG, data = data_reduced)
+summary(model3)
+plot(model3)
+```
+```{r}
+data_PG =  data_reduced[data_reduced[,2] == "PG", ]
+data_PF =  data_reduced[data_reduced[,2] == "PF", ]
+data_SF =  data_reduced[data_reduced[,2] == "SF", ]
+data_C = data_reduced[data_reduced[,2] == "C", ]
+data_SG = data_reduced[data_reduced[,2] == "SG", ]
+```
+
+```{r}
+par(mfrow=c(2,3))
+hist(log(data_PG$salary),freq = F)
+hist(log(data_PF$salary),freq = F)
+hist(log(data_SF$salary),freq = F)
+hist(log(data_C$salary),freq = F)
+hist(log(data_SG$salary),freq = F)
+```
+
+For the PG players, 
+```{r}
+corrplot(cor(data_PG[,-c(1,2)]), method = 'number')
+```
+
+```{r}
+par(mfrow=c(3,4))
+hist(data_PG$Age,freq = F)
+hist(data_PG$FG.,freq = F)
+hist(data_PG$FT.,freq = F)
+hist(data_PG$MPG,freq = F)
+hist(data_PG$PPG,freq = F)
+hist(data_PG$APG,freq = F)
+hist(data_PG$RPG,freq = F)
+hist(data_PG$TOPG,freq = F)
+hist(data_PG$BPG,freq = F)
+hist(data_PG$SPG,freq = F)
+```
+
+```{r}
+lm1 = lm(log(data_PG$salary)~.,data_PG[,c(4:13)])
+summary(lm1)
+```
+
+```{r}
+#step(lm1)
+lm2 = lm(log(data_PG$salary)~Age + PPG,data_PG)
+summary(lm2)
+```
+
+```{r}
+library(car)
+which(dffits(lm2)>2*sqrt(2/46))
+which(abs(covratio(lm2)-1)>(3*2/46))
+which(dfbetas(lm2)>(2/sqrt(46)))
+outlierTest(lm2)
+influencePlot(lm2)
+```
+
+```{r}
+#Same varaibles in the model as before
+data_PG2 = data_PG[-c(74,229,286,436),]
+lm3 = lm(log(data_PG2$salary)~.,data_PG2[,c(4:13)])
+#step(lm3)
+```
+
+For the PF and SF players
+```{r}
+data_PFSF = rbind(data_PF,data_SF)
+```
+
+```{r}
+#corrplot(cor(data_PF[,-c(1,2)]), method = 'number')
+#corrplot(cor(data_SF[,-c(1,2)]), method = 'number')
+corrplot(cor(data_PFSF[,-c(1,2)]), method = 'number')
+```
+
+```{r}
+par(mfrow=c(3,4))
+hist(data_PFSF$Age,freq = F)
+hist(data_PFSF$FG.,freq = F)
+hist(data_PFSF$FT.,freq = F)
+hist(data_PFSF$MPG,freq = F)
+hist(data_PFSF$PPG,freq = F)
+hist(data_PFSF$APG,freq = F)
+hist(data_PFSF$RPG,freq = F)
+hist(data_PFSF$TOPG,freq = F)
+hist(data_PFSF$BPG,freq = F)
+hist(data_PFSF$SPG,freq = F)
+```
+
+```{r}
+lm5 = lm(log(data_PFSF$salary)~.,data_PFSF[,c(4:13)])
+summary(lm5)
+```
+
+```{r}
+#step(lm5)
+lm6 = lm(log(data_PFSF$salary)~Age + MPG + RPG,data_PFSF)
+summary(lm6)
+```
+
+```{r}
+library(car)
+which(dffits(lm6)>2*sqrt(3/46))
+which(abs(covratio(lm6)-1)>(3*3/46))
+which(dfbetas(lm6)>(2/sqrt(46)))
+outlierTest(lm6)
+influencePlot(lm6)
+```
+
+```{r}
+#Same varaibles in the model as before
+data_PFSF2 = data_PFSF[-c(22,185,235,307,442),]
+lm7 = lm(log(data_PFSF2$salary)~.,data_PFSF2[,c(4:13)])
+#step(lm7)
+```
+
+For the SG players, 
+```{r}
+corrplot(cor(data_SG[,-c(1,2)]), method = 'number')
+```
+
+```{r}
+par(mfrow=c(3,4))
+hist(data_SG$Age,freq = F)
+hist(data_SG$FG.,freq = F)
+hist(data_SG$FT.,freq = F)
+hist(data_SG$MPG,freq = F)
+hist(data_SG$PPG,freq = F)
+hist(data_SG$APG,freq = F)
+hist(data_SG$RPG,freq = F)
+hist(data_SG$TOPG,freq = F)
+hist(data_SG$BPG,freq = F)
+hist(data_SG$SPG,freq = F)
+```
+
+```{r}
+lm9 = lm(log(data_SG$salary)~.,data_SG[,c(4:13)])
+summary(lm9)
+```
+
+```{r}
+#step(lm9)
+lm10 = lm(log(data_SG$salary)~ Age + MPG + APG,data_SG)
+summary(lm10)
+```
+
+```{r}
+library(car)
+which(dffits(lm10)>2*sqrt(3/60))
+which(abs(covratio(lm10)-1)>(3*4/60))
+which(dfbetas(lm10)>(2/sqrt(60)))
+outlierTest(lm10)
+influencePlot(lm10)
+```
+
+```{r}
+#Same varaibles in the model as before
+data_SG2 = data_SG[-c(145,180,191,455),]
+lm11 = lm(log(data_SG2$salary)~.,data_SG2[,c(4:13)])
+#step(lm11)
+```
+
+For the C players
+
+```{r}
+corrplot(cor(data_C[,-c(1,2)]), method = 'number')
+```
+
+```{r}
+par(mfrow=c(3,4))
+hist(data_C$Age,freq = F)
+hist(data_C$FG.,freq = F)
+hist(data_C$FT.,freq = F)
+hist(data_C$MPG,freq = F)
+hist(data_C$PPG,freq = F)
+hist(data_C$APG,freq = F)
+hist(data_C$RPG,freq = F)
+hist(data_C$TOPG,freq = F)
+hist(data_C$BPG,freq = F)
+hist(data_C$SPG,freq = F)
+```
+
+```{r}
+lm13 = lm(log(data_C$salary)~.,data_C[,c(4:13)])
+summary(lm13)
+```
+
+```{r}
+#step(lm13)
+lm14 = lm(log(data_C$salary)~Age + MPG + PPG+ APG + TOPG ,data_C)
+summary(lm14)
+```
+
+```{r}
+library(car)
+which(dffits(lm14)>2*sqrt(5/55))
+which(abs(covratio(lm14)-1)>(3*5/55))
+which(dfbetas(lm14)>(2/sqrt(55)))
+outlierTest(lm14)
+influencePlot(lm14)
+```
+
+```{r}
+#Same varaibles in the model as before
+data_C2 = data_C[-c(77,97,112,257,271),]
+lm15 = lm(log(data_C2$salary)~.,data_C2[,c(4:13)])
+#step(lm15)
+```
+
+
+
+
+
+
+
+PF
+```{r}
+lmod1 = lm(log(data_PF$salary)~.,data_PF[,c(4:13)])
+summary(lmod1)
+```
+
+```{r}
+#step(lmod1)
+lmod2 = lm(log(data_PF$salary)~ Age + MPG + APG + RPG + TOPG ,data_PF)
+summary(lmod2)
+```
+
+
+SF
+```{r}
+lmod3 = lm(log(data_SF$salary)~.,data_SF[,c(4:13)])
+summary(lmod3)
+```
+
+```{r}
+#step(lmod3)
+lmod4 = lm(log(data_SF$salary)~ Age + MPG + TOPG ,data_SF)
+summary(lmod4)
+```
+
+
