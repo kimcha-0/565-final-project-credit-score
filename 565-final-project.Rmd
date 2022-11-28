@@ -42,16 +42,28 @@ hist(sqrt(data$`% of Cap`))
 ```
 ```{r}
 par(mfrow=c(3, 4))
-plot(data$`% of Cap`, data$Age, ylab="Age")
-plot(data$`% of Cap`, data$FGPG)
-plot(data$`% of Cap`, data$FTPG)
-plot(data$`% of Cap`, data$MPG)
-plot(data$`% of Cap`, data$PPG)
-plot(data$`% of Cap`, data$APG)
-plot(data$`% of Cap`, data$RPG)
-plot(data$`% of Cap`, data$TPG)
-plot(data$`% of Cap`, data$BPG)
-plot(data$`% of Cap`, data$SPG)
+plot(data$`% of Cap`, data$Age, ylab="Age", xlab="% of Cap")
+plot(data$`% of Cap`, data$FGPG, ylab="FG Per Game", xlab="% of Cap")
+plot(data$`% of Cap`, data$FTPG, ylab="FT Per Game", xlab="% of Cap")
+plot(data$`% of Cap`, data$MPG, ylab="Minutes Per Game", xlab="% of Cap")
+plot(data$`% of Cap`, data$PPG, ylab="Points Per Game", xlab="% of Cap")
+plot(data$`% of Cap`, data$APG, ylab="Assists Per Game", xlab="% of Cap")
+plot(data$`% of Cap`, data$RPG, ylab="Rebounds Per Game", xlab="% of Cap")
+plot(data$`% of Cap`, data$TPG, ylab="Turnovers Per Game", xlab="% of Cap")
+plot(data$`% of Cap`, data$SPG, ylab="Steals Per Game", xlab="% of Cap")
+```
+```{r}
+par(mfrow=c(3,4))
+hist(data$Age,freq = F)
+hist(data$FGPG,freq = F)
+hist(data$FTPG,freq = F)
+hist(data$MPG,freq = F)
+hist(data$PPG,freq = F)
+hist(data$APG,freq = F)
+hist(data$RPG,freq = F)
+hist(data$TPG,freq = F)
+hist(data$BPG,freq = F)
+hist(data$SPG,freq = F)
 ```
 
 ```{r}
@@ -60,14 +72,15 @@ hist(data$`% of Cap`,freq = F)
 hist(log(data$`% of Cap`),freq = F)
 hist(sqrt(data$`% of Cap`),freq = F)
 ```
+
 ```{r}
-model1 = lm(`% of Cap`~Age+FGPG+FTPG+MPG+PPG+APG+RPG+TPG+BPG+SPG, data = data)
+model1 = lm(`% of Cap`~Age+FGPG+FTPG+MPG+PPG+APG+RPG+TPG+BPG+SPG, data = train)
 summary(model1)
-plot(model1)
+plot(model1$model)
 ```
 
 ```{r}
-model2 = lm(log(`% of Cap`)~ Age+FGPG+FTPG+MPG+PPG+APG+RPG+TPG+BPG+SPG, data = data)
+model2 = lm(log(`% of Cap`)~ Age+FGPG+FTPG+MPG+PPG+APG+RPG+TPG+BPG+SPG, data = train)
 summary(model2)
 plot(model2)
 ```
