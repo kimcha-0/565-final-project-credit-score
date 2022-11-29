@@ -1,0 +1,26 @@
+---
+title: "Predicting NBA Salaries with Basketball Statistics"
+output: pdf_document
+date: "2022-11-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Summary
+
+# Introduction
+
+# Methods
+
+# Results
+
+# Discussion
+
+# Challenges and Extensions
+
+
+
+
+
