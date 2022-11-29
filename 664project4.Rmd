@@ -13,18 +13,18 @@ library(readxl)
 library(ggplot2)
 library(reticulate)
 library(corrplot)
-use_python("/usr/local/bin/python3")
+library(car)
+library(magrittr)
+library(dplyr)
 ```
 
 
 ## Reading in the data
 ```{r}
 # NBA data from 1995-2017
-big_data <- read_excel('data.xlsx')
-big_data <- big_data[big_data[,"GP"] >= 30,]
-head(big_data)
-
-
+data <- read_excel('data.xlsx')
+data <- data[data[,"GP"] >= 30,]
+data_reduced = data[,c('Salary', 'Pos', 'ORPG', 'DRPG', 'RPG', 'APG', 'SPG', 'BPG', 'TPG', 'PFPG', 'PPG', 'FGPG', 'FGAPG', '3PPG', '3PAPG', '2PPG', '2PAPG', 'FTPG', 'FTAPG')]
 # data <- read.csv(file = 'final_dataset2.csv')
 # data = data[data[,"G"] >= 30,]      #screen out less statistically significant data points
 # data = data[data[,"Age"] >= 22,]    #salary cap 
@@ -35,117 +35,82 @@ head(big_data)
 ## Split into train and test 80% and 20%
 ```{r}
 set.seed(1234)
-# shuffle = sample.int(nrow(data_reduced))
-# data_reduced$split = cut(shuffle, breaks = 5, labels = c("1","2","3","4","test"))
-# train = subset(data_reduced, split != "test", select = -split)
-# test = subset(data_reduced, split == "test", select = -split)
-# data_reduced = subset(data_reduced, select = -split)
+shuffle = sample.int(nrow(data_reduced))
+data_reduced$split = cut(shuffle, breaks = 5, labels = c("1","2","3","4","test"))
+train = subset(data_reduced, split != "test", select = -split)
+test = subset(data_reduced, split == "test", select = -split)
+data_reduced = subset(data_reduced, select = -split)
 
-shuffle = sample.int(nrow(big_data))
-big_data$split = cut(shuffle, breaks = 5, labels = c("1", "2", "3", "4", "test"))
-train1 = subset(big_data, split != "test", select = -split)
-test1 = subset(big_data, split == "test", select = -split)
+shuffle = sample.int(nrow(data))
+data$split = cut(shuffle, breaks = 5, labels = c("1", "2", "3", "4", "test"))
+train1 = subset(data, split != "test", select = -split)
+test1 = subset(data, split == "test", select = -split)
 advanced_train <- train1[,c('Salary','PER', 'TS%', '3PAr', 'FTr', 'ORB%', 'DRB%', 'TRB%', 'AST%', 'STL%', 'BLK%', 'TOV%', 'USG%', 'OWS', 'DWS', 'WS', 'WS/48', 'OBPM', 'DBPM', 'BPM', 'VORP')]
-advanced_train
 regular_train <- train1[,c('Salary','ORPG', 'DRPG', 'RPG', 'APG', 'SPG', 'BPG', 'TPG', 'PFPG', 'PPG', 'FGPG', 'FGAPG', '3PPG', '3PAPG', '2PPG', '2PAPG', 'FTPG', 'FTAPG')]
 advanced_test <- test1[,c('Salary','PER', 'TS%', '3PAr', 'FTr', 'ORB%', 'DRB%', 'TRB%', 'AST%', 'STL%', 'BLK%', 'TOV%', 'USG%', 'OWS', 'DWS', 'WS', 'WS/48', 'OBPM', 'DBPM', 'BPM', 'VORP')]
 regular_test <- test1[,c('Salary','ORPG', 'DRPG', 'RPG', 'APG', 'SPG', 'BPG', 'TPG', 'PFPG', 'PPG', 'FGPG', 'FGAPG', '3PPG', '3PAPG', '2PPG', '2PAPG', 'FTPG', 'FTAPG')]
 ```
 
 ```{r}
-# par(mfrow=c(1,3))
-# hist(train$salary,freq = F, main = "Salary", xlab = "Salary")
-# hist(log(train$salary),freq = F, main = "Log of Salary", xlab = "Log of Salary")
-# hist(sqrt(train$salary),freq = F, main = "Square Root of Salary", xlab = "Square Root of Salary of Salary")
-
-par(mfrow=c(1, 3))
-hist(train1$`Salary`,freq = F, main = "Salary", xlab = "%Salary")
-hist(log(train1$`Salary`),freq = F, main = "Log of Salary", xlab = "Log of Salary")
-hist(sqrt(train1$`Salary`),freq = F, main = "Square Root of Salary", xlab = "Square Root of Salary")
+par(mfrow=c(1,3))
+hist(train$Salary,freq = F, main = "Salary", xlab = "Salary")
+hist(log(train$Salary),freq = F, main = "Log of Salary", xlab = "Log of Salary")
+hist(sqrt(train$Salary),freq = F, main = "Square Root of Salary", xlab = "Square Root of Salary of Salary")
 ```
-
 ```{r}
-# model1 = lm(salary~Age+FG.+FT.+MPG+PPG+APG+RPG+TOPG+BPG+SPG, data = train)
-# summary(model1)
-# plot(model1)
+corrplot(cor(train[,]), method = 'number', number.cex = 0.9)
 
-# total_model = lm(`% of Cap`~.-(Name + Team + Season), data = big_data)
-# summary(total_model)
-
-regular_stats_model = lm(`Salary`~. , data = regular_train)
-summary(regular_stats_model)
-plot(regular_stats_model)
-regular_train
-corrplot(cor(regular_train[,]), method = 'number', number.cex = 0.5)
-corrplot(cor(advanced_train[,]), method='number', number.cex=0.5)
-```
-
-```{r}
-advanced_stats_model = lm(`Salary`~., data= advanced_train)
-summary(advanced_stats_model)
-plot(advanced_stats_model)
-```
-
-```{r}
-# model2 = lm(log(salary)~ Age+FG.+FT.+MPG+PPG+APG+RPG+TOPG+BPG+SPG, data = train)
-# summary(model2)
-# plot(model2)
-
-regular_stats_model.log = lm(log(`Salary`)~. , data = regular_train)
-summary(regular_stats_model.log)
-plot(regular_stats_model.log)
-```
-
-
-```{r}
-advanced_stats_model.log = lm(log(`Salary`)~., data= advanced_train)
-summary(advanced_stats_model.log)
 
 ```
 
 ```{r}
-# model3 = lm(sqrt(salary)~Age+FG.+FT.+MPG+PPG+APG+RPG+TOPG+BPG+SPG, data = train)
-# summary(model3)
-# plot(model3)
-
-regular_stats_model.sqrt = lm(sqrt(`Salary`)~. , data = regular_train)
-summary(regular_stats_model.sqrt)
+total_model = lm(Salary~., data = train)
+summary(total_model)
+```
+```{r}
+regular_stats_model = lm(Salary~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+FGPG+FGAPG+`3PPG`+`3PAPG` + FTAPG, data = train)
+summary(model1)
+plot(model1)
 ```
 
 ```{r}
-advanced_stats_model.sqrt = lm(sqrt(`Salary`)~., data= advanced_train)
-summary(advanced_stats_model.sqrt)
+model2 = lm(log(Salary)~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+FGPG+FGAPG+`3PPG`+`3PAPG`+FTAPG, data = train)
+summary(model2)
+plot(model2)
+```
+
+```{r}
+model3 = lm(sqrt(Salary)~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+FGPG+FGAPG+`3PPG`+`3PAPG`+FTAPG, data = train)
+summary(model3)
+plot(model3)
+```
+```{r}
+vif(model3)
+```
+We can remove FGPG from the model
+```{r}
+reduced_model3 = lm(sqrt(Salary)~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+`3PAPG`+FTAPG, data = train)
+summary(reduced_model3)
+plot(reduced_model3)
+vif(reduced_model3)
 ```
 
 ## Positional value
 ```{r}
-# train_PG =  train[train[,3] == "PG", ]
-# train_PF =  train[train[,3] == "PF", ]
-# train_SF =  train[train[,3] == "SF", ]
-# train_C = train[train[,3] == "C", ]
-# train_SG = train[train[,3] == "SG", ]
-
-# test_PG =  test[test[,3] == "PG", ]
-# test_PF =  test[test[,3] == "PF", ]
-# test_SF =  test[test[,3] == "SF", ]
-# test_C = test[test[,3] == "C", ]
-# test_SG = test[test[,3] == "SG", ]
+train_PG =  train[train[,2] == "1", ]
+train_PF =  train[train[,2] == "4", ]
+train_SF =  train[train[,2] == "3", ]
+train_C = train[train[,2] == "5", ]
+train_SG = train[train[,2] == "2", ]
+test_PG =  test[test[,2] == "1", ]
+test_PF =  test[test[,2] == "4", ]
+test_SF =  test[test[,2] == "3", ]
+test_C = test[test[,2] == "5", ]
+test_SG = test[test[,2] == "2", ]
 ```
 
 
 ```{r}
-train_PG =train1[train1$Pos == 1,]
-train_PF=train1[train1$Pos == 2, ]
-train_SF = train1[train1$Pos == 3, ]
-train_C = train1[train1$Pos == 4, ]
-train_SG = train1[train1$Pos == 5, ]
-
-test_PG =  test1[test1$Pos == 1, ]
-test_PF =  test1[test1$Pos == 2, ]
-test_SF =  test1[test1$Pos == 3, ]
-test_C = test1[test1$Pos == 5, ]
-test_SG = test1[test1$Pos == 4, ]
-
 #Regular
 train_PG_reg <- train_PG[,c('Salary','ORPG', 'DRPG', 'RPG', 'APG', 'SPG', 'BPG', 'TPG', 'PFPG', 'PPG', 'FGPG', 'FGAPG', '3PPG', '3PAPG', '2PPG', '2PAPG', 'FTPG', 'FTAPG')]
 train_SG_reg <- train_SG[,c('Salary','ORPG', 'DRPG', 'RPG', 'APG', 'SPG', 'BPG', 'TPG', 'PFPG', 'PPG', 'FGPG', 'FGAPG', '3PPG', '3PAPG', '2PPG', '2PAPG', 'FTPG', 'FTAPG')]
@@ -180,17 +145,12 @@ test_C_adv <- test_C[,c('Salary','PER', 'TS%', '3PAr', 'FTr', 'ORB%', 'DRB%', 'T
 Traditional Statistic Correlation Matrix for Point Guards
 ```{r}
 
-corrplot(cor(train_PG_reg[,-c(2, 3)]), method = 'number', number.cex = 0.8)
+corrplot(cor(train_PG[,-c(2, 3)]), method = 'number', number.cex = 0.8)
 ```
-Advanced Statistic Correlation Matrix
-```{r}
-corrplot(cor(train_PG_adv[,]), method="number", number.cex = 0.8)
-```
-
 
 ```{r}
 par(mfrow=c(2,3))
-hist(train_PG$Age,freq = F, main = "Histogram of Age", xlab= "Age")
+hist(train_PG$,freq = F, main = "Histogram of Age", xlab= "Age")
 hist(train_PG$FG.,freq = F, main = "Histogram of Filed Goals per Game", xlab= "Filed Goals per Game")
 hist(train_PG$FT.,freq = F, main = "Histogram of Free Throws per Game", xlab= "Free Throws per Game")
 hist(train_PG$MPG,freq = F, main = "Histogram of Minutes Played per Game", xlab= "Minutes Played per Game")
@@ -203,37 +163,34 @@ hist(train_PG$SPG,freq = F, main = "Histogram of Steals per Game", xlab= "Steals
 ```
 
 ```{r}
-lm1_reg = lm(log(train_PG_reg$Salary)~.-(ORPG + DRPG),train_PG_reg)
-summary(lm1_reg)
-plot(lm1_reg)
+lm1 = lm(Salary~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+`3PAPG`+FTAPG,train_PG)
+summary(lm1)
+plot(lm1)
 ```
 
 ```{r}
-library(car)
-library(magrittr)
-library(dplyr)
-outlierTest(lm1_reg)
-influencePlot(lm1_reg)
-train_PG_reg <- train_PG_reg %>%  filter(!row_number() %in% c(300, 913, 983, 992, 1025))
+outlierTest(lm1)
+influencePlot(lm1)
+train_PG <- train_PG %>%  filter(!row_number() %in% c(70, 967, 1012, 1025, 1030))
 ```
 
 ```{r}
-lm2_reg = lm(log(train_PG_reg$Salary)~.-(ORPG + DRPG),train_PG_reg)
-summary(lm2_reg)
-plot(lm2_reg)
+lm2 = lm(sqrt(Salary)~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+`3PAPG`+FTAPG,train_PG)
+summary(lm2)
+plot(lm2)
 ```
 
 ```{r}
 #AIC and Mallow's Cp select model yields the same model 
 library(leaps)
-b = regsubsets(log(Salary)~.-(ORPG+ DRPG), data = train_PG_reg, nvmax=13)
+b = regsubsets(sqrt(Salary)~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+`3PAPG`+FTAPG, data = train_PG, nvmax=13)
 rs = summary(b)
 rs
-plot(1:12,rs$cp, ylab = "CP statistic", xlab = "Number of Parameters")
+plot(1:10, rs$cp, ylab = "CP statistic", xlab = "Number of Parameters")
 abline(0,1)
 
 rs$which[which.min(rs$cp),]
-lm3 = lm(log(Salary)~RPG+APG+SPG+BPG+TPG+`3PAPG`+`2PPG`+FTPG+FTAPG, data=train_PG_reg)
+lm3 = lm(sqrt(Salary)~ORPG+DRPG+APG+SPG+BPG+TPG+PFPG+PPG+`3PAPG`+FTAPG, data=train_PG)
 summary(lm3)
 plot(lm3)
 #lm3 = lm(log(salary)~Age+FT.+MPG,train2)
